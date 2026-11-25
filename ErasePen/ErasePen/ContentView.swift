@@ -13,22 +13,31 @@ struct ContentView: View {
     @State private var liveImagePoints: [CGPoint] = [] // 原图像素坐标
     @State private var previewMask: UIImage?
 
+    private var theme: LinearGradient {
+        LinearGradient(colors: [.indigo, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                modelStatusCard
-                if viewModel.original == nil {
-                    emptyState
-                } else {
-                    canvasArea
-                    controlsArea
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+                VStack(spacing: 0) {
+                    modelStatusCard
+                    if viewModel.original == nil {
+                        emptyState
+                    } else {
+                        canvasArea
+                        controlsArea
+                    }
                 }
             }
             .navigationTitle("消除笔")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("选照片") { viewModel.showPicker = true }
+                    Button { viewModel.showPicker = true } label: {
+                        Label("选照片", systemImage: "photo.on.rectangle.angled")
+                    }
                 }
             }
             .sheet(isPresented: $viewModel.showPicker) {
@@ -58,39 +67,84 @@ struct ContentView: View {
     private var modelStatusCard: some View {
         Group {
             if !viewModel.downloader.isReady {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "cpu")
-                        Text("消除模型（LaMa）")
-                            .font(.headline)
+                let d = viewModel.downloader
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle().fill(theme).frame(width: 44, height: 44)
+                            Image(systemName: "wand.and.stars")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("消除模型 · LaMa")
+                                .font(.headline)
+                            Text(d.isDownloading
+                                 ? (d.isConnecting ? "正在连接服务器…" : "正在下载 \(d.currentFileLabel)")
+                                 : "首次使用需下载一次")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                         Spacer()
-                        Text(viewModel.downloader.statusText)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Text(d.isReady ? "已就绪" : "\(Int(d.progress * 100))%")
+                            .font(.headline.monospacedDigit())
+                            .foregroundColor(.indigo)
                     }
-                    if viewModel.downloader.progress > 0 && viewModel.downloader.progress < 1 {
-                        ProgressView(value: viewModel.downloader.progress)
+
+                    // 进度条：渐变填充，始终可见，点下下载立刻有反馈。
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color(.systemFill))
+                                .frame(height: 10)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(theme)
+                                .frame(width: max(geo.size.width * d.progress, d.progress > 0 ? 10 : 0),
+                                       height: 10)
+                        }
                     }
-                    Text("首次使用需下载约 215MB 模型，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。")
+                    .frame(height: 10)
+
+                    HStack {
+                        Text("\(formatBytes(d.downloadedBytes)) / \(formatBytes(d.totalBytes))")
+                        Spacer()
+                        if d.isDownloading && !d.isConnecting && d.speedBytesPerSecond > 0 {
+                            Text(formatSpeed(d.speedBytesPerSecond))
+                        }
+                        if let eta = d.etaSeconds, d.isDownloading, !d.isConnecting {
+                            Text("还剩约 \(formatETA(eta))")
+                        }
+                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(.secondary)
+
+                    Text("约 215MB，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。下载慢会自动换备用线路，也可取消后重试。")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    if let error = viewModel.downloader.errorMessage {
+                    if let error = d.errorMessage {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    Button(viewModel.downloader.errorMessage == nil ? "下载模型" : "重试下载") {
-                        viewModel.downloader.startDownload()
+                    HStack(spacing: 10) {
+                        Button(d.errorMessage == nil ? "下载模型" : "重试下载") {
+                            d.startDownload()
+                        }
+                        .buttonStyle(GradientButtonStyle())
+                        .disabled(d.isDownloading)
+                        if d.isDownloading {
+                            Button("取消") { d.cancelDownload() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.large)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.downloader.progress > 0 && viewModel.downloader.progress < 1
-                              && viewModel.downloader.errorMessage == nil)
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(12)
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(20)
+                .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
                 .padding(.horizontal)
-                .padding(.top, 8)
+                .padding(.top, 10)
             }
         }
     }
@@ -98,19 +152,30 @@ struct ContentView: View {
     // MARK: - 空状态
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Spacer()
-            Image(systemName: "wand.and.stars")
-                .font(.system(size: 56))
-                .foregroundColor(.accentColor)
-            Text("涂掉路人、杂物、水印")
-                .font(.title3)
-                .bold()
-            Text("选一张照片，用笔刷涂掉不要的部分，\n点「消除」，AI 会按周围内容把洞补上。")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
+            ZStack {
+                Circle().fill(theme).frame(width: 110, height: 110)
+                    .shadow(color: .indigo.opacity(0.35), radius: 20, x: 0, y: 8)
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 48))
+                    .foregroundColor(.white)
+            }
+            VStack(spacing: 8) {
+                Text("涂掉路人、杂物、水印")
+                    .font(.title2)
+                    .bold()
+                Text("选一张照片，用笔刷涂掉不要的部分，\n点「消除」，AI 会按周围内容把洞补上。")
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+            }
+            HStack(spacing: 8) {
+                featureChip("天空接近无缝", icon: "cloud.sun")
+                featureChip("本地处理", icon: "lock.shield")
+                featureChip("不上传", icon: "eye.slash")
+            }
             Button("从相册选照片") { viewModel.showPicker = true }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(GradientButtonStyle())
                 .controlSize(.large)
             Text("小面积、天空、墙面、地面接近无缝；大面积、复杂结构可能要修两次。")
                 .font(.caption)
@@ -121,6 +186,15 @@ struct ContentView: View {
         }
     }
 
+    private func featureChip(_ text: String, icon: String) -> some View {
+        Label(text, systemImage: icon)
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(20)
+    }
+
     // MARK: - 画布
 
     private var canvasArea: some View {
@@ -129,7 +203,7 @@ struct ContentView: View {
                let pixelSize = image.cgImage.map({ CGSize(width: $0.width, height: $0.height) }) {
                 let rect = aspectFitRect(imageSize: pixelSize, in: geo.size)
                 ZStack {
-                    Color(.systemBackground)
+                    Color(.systemGroupedBackground)
                     canvasContainer(image: image, pixelSize: pixelSize, rect: rect)
                         .scaleEffect(scale)
                         .offset(panOffset)
@@ -158,6 +232,8 @@ struct ContentView: View {
             Image(uiImage: image)
                 .resizable()
                 .frame(width: rect.width, height: rect.height)
+                .cornerRadius(4)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
             if let previewMask = previewMask {
                 Image(uiImage: previewMask)
                     .resizable()
@@ -232,19 +308,23 @@ struct ContentView: View {
     // MARK: - 底部控制
 
     private var controlsArea: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Picker("模式", selection: $viewModel.brushMode) {
-                Text("涂抹").tag(BrushMode.paint)
-                Text("橡皮").tag(BrushMode.erase)
-                Text("移动").tag(BrushMode.pan)
+                Label("涂抹", systemImage: "paintbrush").tag(BrushMode.paint)
+                Label("橡皮", systemImage: "eraser").tag(BrushMode.erase)
+                Label("移动", systemImage: "hand.draw").tag(BrushMode.pan)
             }
             .pickerStyle(.segmented)
 
             HStack {
+                Image(systemName: "circle.circle")
+                    .foregroundColor(.secondary)
                 Text("笔刷")
                 Slider(value: $viewModel.brushSize, in: 10...120, step: 1)
+                    .tint(.indigo)
                 Text("\(Int(viewModel.brushSize))")
                     .frame(width: 32)
+                    .font(.subheadline.monospacedDigit())
             }
 
             HStack(spacing: 12) {
@@ -260,14 +340,16 @@ struct ContentView: View {
                 .disabled(viewModel.maskStore.isEmpty)
                 Spacer()
                 if let message = viewModel.saveMessage {
-                    Text(message).font(.caption).foregroundColor(.green)
+                    Label(message, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.green)
                 }
             }
             .font(.subheadline)
 
             HStack(spacing: 12) {
                 Button("消除") { viewModel.erase() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(GradientButtonStyle())
                     .controlSize(.large)
                     .disabled(!viewModel.canErase)
                 Button("再修一次") { viewModel.rerun() }
@@ -278,8 +360,8 @@ struct ContentView: View {
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(10)
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in viewModel.showOriginal = true }
@@ -307,7 +389,9 @@ struct ContentView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(20, corners: [.topLeft, .topRight])
+        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: -4)
     }
 
     private func refreshPreviewAfterEdit() {
@@ -325,5 +409,62 @@ struct ContentView: View {
             return
         }
         previewMask = ImageProcessing.tintedMaskOverlay(mask, size: previewSize, color: .red)
+    }
+
+    // MARK: - 格式化
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let mb = Double(bytes) / 1_000_000
+        if mb >= 100 { return String(format: "%.0f MB", mb) }
+        return String(format: "%.1f MB", mb)
+    }
+
+    private func formatSpeed(_ bytesPerSecond: Double) -> String {
+        let mbps = bytesPerSecond / 1_000_000
+        if mbps >= 1 { return String(format: "%.1f MB/s", mbps) }
+        return String(format: "%.0f KB/s", bytesPerSecond / 1_000)
+    }
+
+    private func formatETA(_ seconds: Double) -> String {
+        if seconds < 10 { return "不到 10 秒" }
+        if seconds < 60 { return "\(Int(seconds)) 秒" }
+        let m = Int(seconds) / 60, s = Int(seconds) % 60
+        return "\(m) 分 \(s) 秒"
+    }
+}
+
+/// 渐变主按钮：靛蓝→紫，圆角 14，白字。
+struct GradientButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundColor(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(colors: [.indigo, .purple],
+                               startPoint: .leading, endPoint: .trailing)
+            )
+            .cornerRadius(14)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+    }
+}
+
+/// 只给顶部两个角加圆角（底部工具栏用）。
+struct RoundedCorner: Shape {
+    var radius: CGFloat = 20
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners,
+                                cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
