@@ -57,11 +57,18 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
     private static let stallTimeout: TimeInterval = 20
 
     private static let compiledPathKey = "ErasePenCompiledModelPath"
+    private static let modelNameKey = "ErasePenModelName"
 
     @Published var progress: Double = 0
     @Published var statusText: String = "模型未下载"
     @Published var isReady: Bool = false
     @Published var errorMessage: String?
+
+    /// v4 新增：当前模型的显示名（导入别的模型包后会变）。
+    @Published var modelName: String =
+        UserDefaults.standard.string(forKey: modelNameKey) ?? "LaMa"
+    /// v4 新增：正在导入本地模型包。
+    @Published var isImporting = false
 
     /// v2 新增：供界面实时显示。
     @Published var isDownloading = false
@@ -174,6 +181,7 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
         resumeData = nil
         speedBytesPerSecond = 0
         etaSeconds = nil
+        totalBytes = Self.totalExpectedBytes // 之前导过别的包会改掉总数，下载时复位
         statusText = "正在连接服务器…"
         // 已下好的文件跳过，只补缺失的，断点重试不用重下。
         // 大小不对的文件（残缺、错误页）删掉重下，不能当成已下好。
@@ -199,6 +207,39 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
         }
         startWatchdog()
         downloadCurrentFile()
+    }
+
+    /// v4：导入用户自己下载好的本地模型包（文件夹 / zip / 三个散文件都行，
+    /// 见 ModelImporter）。装好就替换当前模型，接着编译、设为当前模型。
+    /// 导入的是本地文件，不走网络；以后换别的模型包也走这里。
+    func importPackage(from urls: [URL]) {
+        guard !isDownloading, !isImporting else { return }
+        errorMessage = nil
+        isImporting = true
+        statusText = "正在导入模型包…"
+        Task.detached { [weak self] in
+            guard let self else { return }
+            do {
+                let result = try ModelImporter.install(from: urls, to: Self.packageURL())
+                // 清掉旧编译缓存，下次启动不再用旧模型。
+                UserDefaults.standard.removeObject(forKey: Self.compiledPathKey)
+                await MainActor.run {
+                    self.modelName = result.displayName
+                    UserDefaults.standard.set(result.displayName, forKey: Self.modelNameKey)
+                    self.downloadedBytes = result.totalBytes
+                    self.totalBytes = result.totalBytes
+                    self.progress = 1
+                    self.isImporting = false
+                    self.statusText = "正在编译模型…"
+                }
+                self.compile()
+            } catch {
+                await MainActor.run {
+                    self.isImporting = false
+                    self.fail("导入失败：\(error.localizedDescription)")
+                }
+            }
+        }
     }
 
     /// 用户点「取消」：停掉当前任务，已下好的文件保留，下次继续下剩下的。
@@ -335,15 +376,9 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
 
     /// Manifest.json 必须是合法 JSON 且含清单必需字段，否则编译必报
-    /// "A valid manifest does not exist"。
+    /// "A valid manifest does not exist"。校验逻辑在 ModelImporter 里共用。
     static func manifestIsValid() -> Bool {
-        let url = packageURL().appendingPathComponent("Manifest.json")
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              json["fileFormatVersion"] != nil,
-              json["itemInfoEntries"] is [String: Any],
-              json["rootModelIdentifier"] != nil else { return false }
-        return true
+        ModelImporter.isValidPackage(at: packageURL())
     }
 
     private func fail(_ message: String) {

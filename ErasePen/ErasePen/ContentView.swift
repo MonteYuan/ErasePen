@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var livePoints: [CGPoint] = [] // 画布容器坐标（未缩放）
     @State private var liveImagePoints: [CGPoint] = [] // 原图像素坐标
     @State private var previewMask: UIImage?
+    @State private var showImporter = false // 导入本地模型包的文件选择器
 
     private var theme: LinearGradient {
         LinearGradient(colors: [.indigo, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -48,6 +49,15 @@ struct ContentView: View {
                     previewMask = nil
                 }
             }
+            .sheet(isPresented: $showImporter) {
+                ModelPackagePicker(
+                    onPick: { urls in
+                        showImporter = false
+                        viewModel.downloader.importPackage(from: urls)
+                    },
+                    onCancel: { showImporter = false }
+                )
+            }
             .alert("提示", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
@@ -77,9 +87,10 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("消除模型 · LaMa")
+                            Text("消除模型 · \(d.modelName)")
                                 .font(.headline)
-                            Text(d.isDownloading
+                            Text(d.isImporting ? "正在导入本地模型包…"
+                                 : d.isDownloading
                                  ? (d.isConnecting ? "正在连接服务器…" : "正在下载 \(d.currentFileLabel)")
                                  : "首次使用需下载一次")
                                 .font(.caption)
@@ -118,7 +129,7 @@ struct ContentView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundColor(.secondary)
 
-                    Text("约 217MB，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。下载慢会自动换备用线路，也可取消后重试。")
+                    Text("约 217MB，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。下载慢会自动换备用线路，也可取消后重试。下载不了就点「导入本地模型」，自己下载好模型包再选进来，以后换别的模型包也走这里。")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if let error = d.errorMessage {
@@ -131,11 +142,18 @@ struct ContentView: View {
                             d.startDownload()
                         }
                         .buttonStyle(GradientButtonStyle())
-                        .disabled(d.isDownloading)
+                        .disabled(d.isDownloading || d.isImporting)
+                        Button("导入本地模型") { showImporter = true }
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
+                            .disabled(d.isDownloading || d.isImporting)
                         if d.isDownloading {
                             Button("取消") { d.cancelDownload() }
                                 .buttonStyle(.bordered)
                                 .controlSize(.large)
+                        }
+                        if d.isImporting {
+                            ProgressView()
                         }
                     }
                 }

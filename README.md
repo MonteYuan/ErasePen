@@ -67,12 +67,45 @@ v2（2026-11-25）下载体验改进：首版用户反馈「点了下载半天�
 **已下载 MB / 总 MB、下载速度 MB/s、剩余时间**，点下下载立刻显示「正在
 连接服务器…」；下载中可以点「取消」，已下好的文件保留，下次继续下剩下的。
 
+v3（2026-11-25）路径 bug：`relativePath` 里带了 `LaMa.mlpackage/` 前缀，
+而 `packageURL()` 本身已含这一层，三个文件全下到了嵌套目录
+`Documents/LaMa.mlpackage/LaMa.mlpackage/…`，外层包根目录无 Manifest.json，
+编译报 "A valid manifest does not exist"，重试也一样。v3 去掉前缀、启动时
+自动把旧嵌套文件挪到正确位置（不用重下）、按实测大小校验文件、编译前校验
+清单、总大小改为实测的 216,647,386 字节（约 217MB）。
+
+v4（2026-11-25）本地导入模型包：用户反馈还是下载不了，改为 App 里加
+「导入本地模型」选项，自己下载好模型再选进来。支持三种输入：① `.mlpackage`
+文件夹；② 包含它的 `.zip`（微信/QQ 传 zip 到手机最方便）；③ `model.mlmodel` +
+`weight.bin` + `Manifest.json` 三个散文件（多选一次选完）。导入后校验清单、
+拷到 Documents、编译、设为当前模型；以后换别的模型包也走这里（导入即替换
+当前模型，界面显示当前模型名）。解压用 ZIPFoundation（SPM，见下）。
+
+### 电脑上下载模型（给导入用）
+
+在电脑浏览器里打开这三个地址下载（hf-mirror.com 国内镜像，同一仓库同一文件）：
+- https://hf-mirror.com/mlboydaisuke/LaMa-CoreML/resolve/main/LaMa.mlpackage/Manifest.json
+- https://hf-mirror.com/mlboydaisuke/LaMa-CoreML/resolve/main/LaMa.mlpackage/Data/com.apple.CoreML/model.mlmodel
+- https://hf-mirror.com/mlboydaisuke/LaMa-CoreML/resolve/main/LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin
+
+按下面结构放好，整个 `LaMa.mlpackage` 文件夹打成 zip（右键 → 压缩），
+微信发给自己，手机上存到“文件”App，再在 ErasePen 里点「导入本地模型」选这个 zip：
+
+```
+LaMa.mlpackage/
+  Manifest.json
+  Data/com.apple.CoreML/model.mlmodel
+  Data/com.apple.CoreML/weights/weight.bin
+```
+
+也可以直接把文件夹传到 iCloud Drive，在 App 里选文件夹；或三个散文件直接选。
+
 ## 技术
 
 - SwiftUI，Swift 5，Deployment Target **iOS 17.0**（见上，模型要求）
 - Bundle ID：`com.meng.erasepen`
 - 只用系统框架：SwiftUI、CoreML、CoreImage、Photos、PhotosUI
-- 无第三方依赖，无 CocoaPods / SPM
+- 一个 SPM 依赖：ZIPFoundation（解压导入的 zip 模型包，v4 引入）
 - 全中文界面；不收集、不上传任何照片
 
 ## 工程结构

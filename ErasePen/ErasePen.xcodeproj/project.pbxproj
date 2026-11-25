@@ -16,6 +16,8 @@
 		400000000000000000000007 /* MaskStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000007 /* MaskStore.swift */; };
 		400000000000000000000008 /* PhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000008 /* PhotoPicker.swift */; };
 		400000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000009 /* Assets.xcassets */; };
+		400000000000000000000010 /* ModelImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000012 /* ModelImporter.swift */; };
+		400000000000000000000011 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 600000000000000000000002 /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,7 @@
 		300000000000000000000006 /* ImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProcessing.swift; sourceTree = "<group>"; };
 		300000000000000000000007 /* MaskStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaskStore.swift; sourceTree = "<group>"; };
 		300000000000000000000008 /* PhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPicker.swift; sourceTree = "<group>"; };
+		300000000000000000000012 /* ModelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelImporter.swift; sourceTree = "<group>"; };
 		300000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		300000000000000000000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		300000000000000000000011 /* ErasePen.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ErasePen.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -37,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				400000000000000000000011 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -62,6 +66,7 @@
 				300000000000000000000006 /* ImageProcessing.swift */,
 				300000000000000000000007 /* MaskStore.swift */,
 				300000000000000000000008 /* PhotoPicker.swift */,
+				300000000000000000000012 /* ModelImporter.swift */,
 				300000000000000000000009 /* Assets.xcassets */,
 				300000000000000000000010 /* Info.plist */,
 			);
@@ -95,6 +100,9 @@
 			productName = ErasePen;
 			productReference = 300000000000000000000011 /* ErasePen.app */;
 			productType = "com.apple.product-type.application";
+			packageProductDependencies = (
+				600000000000000000000002 /* ZIPFoundation */,
+			);
 		};
 /* End PBXNativeTarget section */
 
@@ -124,6 +132,9 @@
 			productRefGroup = 200000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				600000000000000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			targets = (
 				200000000000000000000004 /* ErasePen */,
 			);
@@ -154,10 +165,19 @@
 				400000000000000000000006 /* ImageProcessing.swift in Sources */,
 				400000000000000000000007 /* MaskStore.swift in Sources */,
 				400000000000000000000008 /* PhotoPicker.swift in Sources */,
+				400000000000000000000010 /* ModelImporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		600000000000000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/weichsel/ZIPFoundation"; requirement = {kind = upToNextMajorVersion; minimumVersion = 0.9.0; }; };
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		600000000000000000000002 /* ZIPFoundation */ = {isa = XCSwiftPackageProductDependency; package = 600000000000000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */; productName = ZIPFoundation; };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		20000000000000000000000A /* Debug */ = {
