@@ -30,10 +30,10 @@
 ## 模型：LaMa CoreML（已核实，2026-11-25）
 
 - 来源：Hugging Face `mlboydaisuke/LaMa-CoreML`，上游 `advimman/lama`，许可证 **Apache-2.0**。
-- 文件（仓库实测，`usedStorage` 225,511,887 字节，约 215MB）：
-  - `LaMa.mlpackage/Data/com.apple.CoreML/model.mlmodel`（1.1MB）
-  - `LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin`（约 224MB，大头）
-  - `LaMa.mlpackage/Manifest.json`
+- 文件（三文件实测大小之和 216,647,386 字节，约 217MB）：
+  - `LaMa.mlpackage/Data/com.apple.CoreML/model.mlmodel`（1,101,809 字节）
+  - `LaMa.mlpackage/Data/com.apple.CoreML/weights/weight.bin`（215,544,960 字节，大头）
+  - `LaMa.mlpackage/Manifest.json`（617 字节）
 - 输入 / 输出（**下载 model.mlmodel 后解析 protobuf 实测**，不是猜的）：
   - 输入 `image`：800×800，RGB 彩色图
   - 输入 `mask`：800×800，灰度图，白 = 要修复，黑 = 保留
@@ -48,8 +48,8 @@
    `…/resolve/main/LaMa.mlpackage.zip` 实测返回 **404**。App 因此不走 zip，
    而是逐个下载上面三个文件、按原目录结构重建 `.mlpackage` 再编译。
    模型卡里另一处下载命令还写了另一个仓库名 `mlboydaisuke/coreml-zoo`，同样不可信，没采用。
-2. 模型卡表格写下载大小 187MB，但仓库实际总大小是 225,511,887 字节（约 215MB）。
-   App 首次下载显示约 215MB，建议用 Wi-Fi。
+2. 模型卡表格写下载大小 187MB，但三文件实测之和是 216,647,386 字节（约 217MB）。
+   App 首次下载显示约 217MB，建议用 Wi-Fi。
 
 ### 模型怎么进手机
 
@@ -149,7 +149,7 @@ Product → Build（Release），再按脚本打包。
 
 ## 首次使用
 
-1. 打开 App，点「下载模型」，约 215MB，建议 Wi-Fi 下下载，下载一次即可。
+1. 打开 App，点「下载模型」，约 217MB，建议 Wi-Fi 下下载，下载一次即可。
 2. 点「选照片」，涂掉不要的部分（笔刷可调大小，涂错了用橡皮或撤销）。
 3. 点「消除」，等几秒；不满意点「再修一次」。
 4. 按住「按住看原图」对比，满意点「保存」。

@@ -118,7 +118,7 @@ struct ContentView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundColor(.secondary)
 
-                    Text("约 215MB，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。下载慢会自动换备用线路，也可取消后重试。")
+                    Text("约 217MB，建议用 Wi-Fi。下载一次后永久离线使用，照片只在手机本地处理，不上传、不审核。下载慢会自动换备用线路，也可取消后重试。")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if let error = d.errorMessage {
